@@ -4,7 +4,7 @@
 
 <h1 align="center">procmod-scan</h1>
 
-<p align="center">Pattern and signature scanning with SIMD acceleration.</p>
+<p align="center">Fast pattern and signature scanning for byte slices.</p>
 
 ---
 

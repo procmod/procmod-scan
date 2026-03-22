@@ -128,7 +128,7 @@ impl Pattern {
         let prefix = exact_prefix(&self.tokens);
 
         if prefix.len() >= 2 {
-            scan_simd_filtered(data, &self.tokens, &prefix)
+            scan_prefix_filtered(data, &self.tokens, &prefix)
         } else {
             scan_naive(data, &self.tokens)
         }
@@ -145,7 +145,7 @@ impl Pattern {
         let prefix = exact_prefix(&self.tokens);
 
         if prefix.len() >= 2 {
-            scan_first_simd_filtered(data, &self.tokens, &prefix)
+            scan_first_prefix_filtered(data, &self.tokens, &prefix)
         } else {
             scan_first_naive(data, &self.tokens)
         }
@@ -163,38 +163,39 @@ fn exact_prefix(tokens: &[Token]) -> Vec<u8> {
         .collect()
 }
 
-fn matches_at(data: &[u8], offset: usize, tokens: &[Token]) -> bool {
+fn matches_at(data: &[u8], offset: usize, tokens: &[Token], skip: usize) -> bool {
     if offset + tokens.len() > data.len() {
         return false;
     }
-    tokens.iter().enumerate().all(|(i, tok)| match tok {
+    tokens[skip..].iter().enumerate().all(|(i, tok)| match tok {
         Token::Wildcard => true,
-        Token::Exact(b) => data[offset + i] == *b,
+        Token::Exact(b) => data[offset + skip + i] == *b,
     })
 }
 
 fn scan_naive(data: &[u8], tokens: &[Token]) -> Vec<usize> {
     let end = data.len() - tokens.len() + 1;
-    (0..end).filter(|&i| matches_at(data, i, tokens)).collect()
+    (0..end)
+        .filter(|&i| matches_at(data, i, tokens, 0))
+        .collect()
 }
 
 fn scan_first_naive(data: &[u8], tokens: &[Token]) -> Option<usize> {
     let end = data.len() - tokens.len() + 1;
-    (0..end).find(|&i| matches_at(data, i, tokens))
+    (0..end).find(|&i| matches_at(data, i, tokens, 0))
 }
 
-// simd-accelerated scan: use the exact prefix as a fast first-byte filter
-// then verify the full pattern only at candidate positions
-fn scan_simd_filtered(data: &[u8], tokens: &[Token], prefix: &[u8]) -> Vec<usize> {
+fn scan_prefix_filtered(data: &[u8], tokens: &[Token], prefix: &[u8]) -> Vec<usize> {
     let end = data.len() - tokens.len() + 1;
     let first = prefix[0];
+    let skip = prefix.len();
     let mut results = Vec::new();
 
     let mut i = 0;
     while i < end {
-        if let Some(pos) = memchr_naive(first, &data[i..end]) {
+        if let Some(pos) = memchr_single(first, &data[i..end]) {
             let abs = i + pos;
-            if data[abs..].starts_with(prefix) && matches_at(data, abs, tokens) {
+            if data[abs..].starts_with(prefix) && matches_at(data, abs, tokens, skip) {
                 results.push(abs);
             }
             i = abs + 1;
@@ -206,15 +207,16 @@ fn scan_simd_filtered(data: &[u8], tokens: &[Token], prefix: &[u8]) -> Vec<usize
     results
 }
 
-fn scan_first_simd_filtered(data: &[u8], tokens: &[Token], prefix: &[u8]) -> Option<usize> {
+fn scan_first_prefix_filtered(data: &[u8], tokens: &[Token], prefix: &[u8]) -> Option<usize> {
     let end = data.len() - tokens.len() + 1;
     let first = prefix[0];
+    let skip = prefix.len();
 
     let mut i = 0;
     while i < end {
-        if let Some(pos) = memchr_naive(first, &data[i..end]) {
+        if let Some(pos) = memchr_single(first, &data[i..end]) {
             let abs = i + pos;
-            if data[abs..].starts_with(prefix) && matches_at(data, abs, tokens) {
+            if data[abs..].starts_with(prefix) && matches_at(data, abs, tokens, skip) {
                 return Some(abs);
             }
             i = abs + 1;
@@ -226,8 +228,7 @@ fn scan_first_simd_filtered(data: &[u8], tokens: &[Token], prefix: &[u8]) -> Opt
     None
 }
 
-// fast single-byte search, autovectorizes well on modern compilers
-fn memchr_naive(needle: u8, haystack: &[u8]) -> Option<usize> {
+fn memchr_single(needle: u8, haystack: &[u8]) -> Option<usize> {
     haystack.iter().position(|&b| b == needle)
 }
 
@@ -412,5 +413,68 @@ mod tests {
     #[test]
     fn from_tokens_empty() {
         assert!(Pattern::from_tokens(vec![]).is_err());
+    }
+
+    #[test]
+    fn ida_lowercase_hex() {
+        let p = Pattern::from_ida("4a 8b ff").unwrap();
+        assert_eq!(
+            p.tokens(),
+            &[Token::Exact(0x4A), Token::Exact(0x8B), Token::Exact(0xFF)]
+        );
+    }
+
+    #[test]
+    fn ida_mixed_case_hex() {
+        let p = Pattern::from_ida("4A 8b Ff").unwrap();
+        assert_eq!(
+            p.tokens(),
+            &[Token::Exact(0x4A), Token::Exact(0x8B), Token::Exact(0xFF)]
+        );
+    }
+
+    #[test]
+    fn scan_first_exact_length_match() {
+        let data = b"\x48\x8B\x05";
+        let p = Pattern::from_ida("48 8B 05").unwrap();
+        assert_eq!(p.scan_first(data), Some(0));
+    }
+
+    #[test]
+    fn scan_first_exact_length_no_match() {
+        let data = b"\x48\x8B\x06";
+        let p = Pattern::from_ida("48 8B 05").unwrap();
+        assert_eq!(p.scan_first(data), None);
+    }
+
+    #[test]
+    fn scan_wildcard_leading() {
+        let data = b"\x00\x48\x8B\x00\x49\x8B";
+        let p = Pattern::from_ida("? 8B").unwrap();
+        assert_eq!(p.scan(data), vec![1, 4]);
+    }
+
+    #[test]
+    fn scan_prefix_multiple_first_byte_one_full_match() {
+        let data = b"\x48\x00\x00\x48\x8B\x05\x48\x00\x00";
+        let p = Pattern::from_ida("48 8B 05").unwrap();
+        assert_eq!(p.scan(data), vec![3]);
+    }
+
+    #[test]
+    fn scan_prefix_all_candidates_match() {
+        let data = b"\x48\x8B\x05\x00\x48\x8B\x05\x00";
+        let p = Pattern::from_ida("48 8B 05").unwrap();
+        assert_eq!(p.scan(data), vec![0, 4]);
+    }
+
+    #[test]
+    fn ida_extra_whitespace() {
+        let p = Pattern::from_ida("  48   8B   05  ").unwrap();
+        assert_eq!(p.len(), 3);
+        assert_eq!(
+            p.tokens(),
+            &[Token::Exact(0x48), Token::Exact(0x8B), Token::Exact(0x05)]
+        );
     }
 }

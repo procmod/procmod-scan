@@ -2,7 +2,7 @@
 name = "procmod-scan"
 version = "1.0.0"
 edition = "2021"
-description = "Pattern and signature scanning with SIMD acceleration"
+description = "Fast pattern and signature scanning for byte slices"
 license = "MIT"
 repository = "https://github.com/procmod/procmod-scan"
 keywords = ["pattern", "signature", "scan", "game", "modding"]

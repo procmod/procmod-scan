@@ -1,8 +1,8 @@
-//! Pattern and signature scanning with SIMD acceleration.
+//! Fast pattern and signature scanning for byte slices.
 //!
 //! Scan byte slices for patterns using IDA-style signatures or code-style
-//! byte/mask pairs. Exact byte prefixes are used as a fast filter before
-//! verifying the full pattern at candidate positions.
+//! byte/mask pairs. Patterns with an exact byte prefix use a fast-path filter
+//! that narrows candidates before verifying the full pattern.
 //!
 //! # Example
 //!
