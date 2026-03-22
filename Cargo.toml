@@ -1,6 +1,6 @@
 [package]
 name = "procmod-scan"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 description = "Fast pattern and signature scanning for byte slices"
 license = "MIT"
