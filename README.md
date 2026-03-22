@@ -1,26 +1,5 @@
 <p align="center">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
-  <rect width="256" height="256" rx="16" fill="#111"/>
-  <!-- byte stream - horizontal bar of hex cells -->
-  <rect x="24" y="108" width="24" height="24" rx="3" fill="#334155"/>
-  <rect x="52" y="108" width="24" height="24" rx="3" fill="#334155"/>
-  <rect x="80" y="108" width="24" height="24" rx="3" fill="#f97316"/>
-  <rect x="108" y="108" width="24" height="24" rx="3" fill="#38bdf8"/>
-  <rect x="136" y="108" width="24" height="24" rx="3" fill="#f97316"/>
-  <rect x="164" y="108" width="24" height="24" rx="3" fill="#334155"/>
-  <rect x="192" y="108" width="24" height="24" rx="3" fill="#334155"/>
-  <!-- scan bracket highlighting the matched region -->
-  <path d="M78 98 L78 94 L162 94 L162 98" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M78 142 L78 146 L162 146 L162 142" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- crosshair / target reticle centered on match -->
-  <circle cx="120" cy="120" r="32" fill="none" stroke="#a78bfa" stroke-width="1.5" opacity="0.4"/>
-  <circle cx="120" cy="120" r="42" fill="none" stroke="#a78bfa" stroke-width="1" opacity="0.2"/>
-  <!-- corner ticks -->
-  <line x1="120" y1="72" x2="120" y2="80" stroke="#a78bfa" stroke-width="1.5" opacity="0.5"/>
-  <line x1="120" y1="160" x2="120" y2="168" stroke="#a78bfa" stroke-width="1.5" opacity="0.5"/>
-  <line x1="72" y1="120" x2="80" y2="120" stroke="#a78bfa" stroke-width="1.5" opacity="0.5"/>
-  <line x1="160" y1="120" x2="168" y2="120" stroke="#a78bfa" stroke-width="1.5" opacity="0.5"/>
-</svg>
+<img src="logo.svg" width="256" height="256" alt="procmod-scan">
 </p>
 
 <h1 align="center">procmod-scan</h1>
