@@ -65,11 +65,11 @@ impl Pattern {
     /// let pattern = Pattern::from_code(b"\x48\x8B\x00\x89", "xx?x").unwrap();
     /// ```
     pub fn from_code(bytes: &[u8], mask: &str) -> Result<Self> {
-        if bytes.len() != mask.len() {
+        let mask_len = mask.chars().count();
+        if bytes.len() != mask_len {
             return Err(Error::InvalidPattern(format!(
-                "bytes length ({}) does not match mask length ({})",
-                bytes.len(),
-                mask.len()
+                "bytes length ({}) does not match mask length ({mask_len})",
+                bytes.len()
             )));
         }
 
@@ -285,6 +285,18 @@ mod tests {
     #[test]
     fn code_invalid_mask() {
         assert!(Pattern::from_code(b"\x48", "z").is_err());
+    }
+
+    #[test]
+    fn code_non_ascii_mask_is_rejected_without_length_confusion() {
+        let error = Pattern::from_code(b"\x48\x8B", "xé").unwrap_err();
+        assert!(error.to_string().contains("invalid mask character 'é'"));
+    }
+
+    #[test]
+    fn code_non_ascii_mask_length_is_counted_in_characters() {
+        let error = Pattern::from_code(b"\x48", "é").unwrap_err();
+        assert!(error.to_string().contains("invalid mask character 'é'"));
     }
 
     #[test]
